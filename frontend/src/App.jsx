@@ -34,24 +34,33 @@ export default function App() {
   // Add Monitor form state
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const [interval, setInterval] = useState("5");
+ const [checkInterval, setCheckInterval] = useState("5");
   const [monitors, setMonitors] = useState([]);
 useEffect(() => {
   const fetchMonitors = async () => {
+    console.log("Fetching monitors...");
     try {
-      const response = await fetch(
-        "http://localhost:3000/api/monitors"
-      );
-
+      const response = await fetch("http://localhost:3000/api/monitors");
       const data = await response.json();
-
       setMonitors(data);
     } catch (error) {
       console.error("Error fetching monitors:", error);
     }
   };
 
+  // Initial fetch
   fetchMonitors();
+
+  // Refresh every 30 seconds
+ const interval = setInterval(() => {
+  console.log("Interval running...");
+  fetchMonitors();
+}, 30000);
+
+console.log("Interval ID:", interval);
+
+  // Cleanup when component unmounts
+  return () => clearInterval(interval);
 }, []);
   // Send new monitor to Express backend
   const handleCreateMonitor = async () => {
@@ -63,11 +72,11 @@ useEffect(() => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        name,
-        url,
-        interval,
-      }),
+     body: JSON.stringify({
+  name,
+  url,
+  interval: checkInterval,
+}),
     });
 
     const data = await response.json();
@@ -86,7 +95,7 @@ useEffect(() => {
     // Clear form
     setName("");
     setUrl("");
-    setInterval("5");
+    setCheckInterval("5");
 
   } catch (error) {
     console.error("Error creating monitor:", error);
@@ -335,10 +344,8 @@ useEffect(() => {
 
                 <select
                   className="w-full bg-accent/50 border border-border rounded-md p-2"
-                  value={interval}
-                  onChange={(e) =>
-                    setInterval(e.target.value)
-                  }
+                 value={checkInterval}
+                 onChange={(e) => setCheckInterval(e.target.value)}
                 >
                   <option value="1">
                     Every 1 minute

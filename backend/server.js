@@ -30,7 +30,18 @@ async function checkMonitor(url) {
     };
   }
 }
+async function checkAllMonitors() {
+  for (const monitor of monitors) {
+    const result = await checkMonitor(monitor.url);
 
+    monitor.status = result.status;
+    monitor.responseTime = result.responseTime;
+    monitor.statusCode = result.statusCode;
+    monitor.lastChecked = result.lastChecked;
+  }
+
+  console.log("All monitors checked");
+}
 app.post("/api/monitors", async(request, response) => {
   const { name, url, interval } = request.body;
   if (!name || !url) {
@@ -76,3 +87,6 @@ app.get("/api/health", (request, response) => {
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
+setInterval(async () => {
+  await checkAllMonitors();
+}, 30000);
