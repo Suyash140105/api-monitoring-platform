@@ -7,21 +7,60 @@ app.use(cors());
 app.use(express.json());
 
 let monitors = [];
+async function checkMonitor(url) {
+  const start = Date.now();
 
-app.post("/api/monitors", (request, response) => {
+  try {
+    const response = await fetch(url);
+
+    const responseTime = Date.now() - start;
+
+    return {
+      status: response.ok ? "Healthy" : "Down",
+      responseTime,
+      statusCode: response.status,
+      lastChecked: new Date().toISOString(),
+    };
+  } catch {
+    return {
+      status: "Down",
+      responseTime: null,
+      statusCode: null,
+      lastChecked: new Date().toISOString(),
+    };
+  }
+}
+
+app.post("/api/monitors", async(request, response) => {
   const { name, url, interval } = request.body;
+  if (!name || !url) {
+  return response.status(400).json({
+    error: "Name and URL are required",
+  });
+}try {
+  new URL(url);
+} catch {
+  return response.status(400).json({
+    error: "Invalid URL",
+  });
+}
 
-  const monitor = {
-    id: Date.now(),
-    name,
-    url,
-    interval,
-    status: "Pending",
-  };
+  const result = await checkMonitor(url);
 
-  monitors.push(monitor);
+const monitor = {
+  id: Date.now(),
+  name,
+  url,
+  interval,
+  status: result.status,
+  responseTime: result.responseTime,
+  statusCode: result.statusCode,
+  lastChecked: result.lastChecked,
+};
 
-  response.status(201).json(monitor);
+monitors.push(monitor);
+
+response.status(201).json(monitor);
 });
 
 app.get("/api/monitors", (request, response) => {

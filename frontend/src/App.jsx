@@ -264,16 +264,20 @@ useEffect(() => {
                     </td>
 
                     <td className="px-6 py-4 text-sm text-zinc-300">
-                      {m.response}
-                    </td>
+  {m.responseTime !== null && m.responseTime !== undefined
+    ? `${m.responseTime} ms`
+    : "-"}
+</td>
 
-                    <td className="px-6 py-4 text-sm text-zinc-300">
-                      {m.uptime}
-                    </td>
+<td className="px-6 py-4 text-sm text-zinc-300">
+  --
+</td>
 
-                    <td className="px-6 py-4 text-sm text-zinc-500">
-                      {m.last}
-                    </td>
+<td className="px-6 py-4 text-sm text-zinc-500">
+  {m.lastChecked
+    ? new Date(m.lastChecked).toLocaleString()
+    : "-"}
+</td>   
                   </tr>
                 ))}
               </tbody>
