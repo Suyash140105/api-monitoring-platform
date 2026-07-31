@@ -17,14 +17,6 @@ import {
   Server,
 } from "lucide-react";
 
-const chartData = [
-  { time: "12:00", latency: 120 },
-  { time: "13:00", latency: 132 },
-  { time: "14:00", latency: 101 },
-  { time: "15:00", latency: 144 },
-  { time: "16:00", latency: 90 },
-  { time: "17:00", latency: 110 },
-];
 
 
 
@@ -36,6 +28,7 @@ export default function App() {
   const [url, setUrl] = useState("");
  const [checkInterval, setCheckInterval] = useState("5");
   const [monitors, setMonitors] = useState([]);
+  const chartData = monitors.length > 0 ? monitors[0].history : [];
 useEffect(() => {
   const fetchMonitors = async () => {
     console.log("Fetching monitors...");
@@ -64,7 +57,7 @@ console.log("Interval ID:", interval);
 }, []);
   // Send new monitor to Express backend
   const handleCreateMonitor = async () => {
-  console.log("FORM VALUES:", { name, url, interval });
+  console.log("FORM VALUES:", { name, url,   checkInterval });
 
   try {
     const response = await fetch("http://localhost:3000/api/monitors", {
@@ -277,9 +270,8 @@ console.log("Interval ID:", interval);
     ? `${m.responseTime} ms`
     : "-"}
 </td>
-
 <td className="px-6 py-4 text-sm text-zinc-300">
-  --
+  {m.uptime}%
 </td>
 
 <td className="px-6 py-4 text-sm text-zinc-500">

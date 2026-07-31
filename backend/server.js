@@ -38,6 +38,26 @@ async function checkAllMonitors() {
     monitor.responseTime = result.responseTime;
     monitor.statusCode = result.statusCode;
     monitor.lastChecked = result.lastChecked;
+
+    monitor.totalChecks++;
+
+    if (result.status === "Healthy") {
+      monitor.successChecks++;
+    }
+
+    monitor.uptime = (
+      (monitor.successChecks / monitor.totalChecks) *
+      100
+    ).toFixed(2);
+
+    monitor.history.push({
+      time: new Date().toLocaleTimeString(),
+      latency: result.responseTime ?? 0,
+    });
+
+    if (monitor.history.length > 20) {
+      monitor.history.shift();
+    }
   }
 
   console.log("All monitors checked");
@@ -67,6 +87,11 @@ const monitor = {
   responseTime: result.responseTime,
   statusCode: result.statusCode,
   lastChecked: result.lastChecked,
+
+  successChecks: result.status === "Healthy" ? 1 : 0,
+  totalChecks: 1,
+  uptime: result.status === "Healthy" ? 100 : 0,
+  history: [],
 };
 
 monitors.push(monitor);
