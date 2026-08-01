@@ -28,6 +28,25 @@ export default function App() {
   const [url, setUrl] = useState("");
  const [checkInterval, setCheckInterval] = useState("5");
   const [monitors, setMonitors] = useState([]);
+  const totalApis = monitors.length;
+
+const healthyApis = monitors.filter(
+  (m) => m.status === "Healthy"
+).length;
+
+const downApis = monitors.filter(
+  (m) => m.status === "Down"
+).length;
+
+const avgLatency =
+  monitors.length > 0
+    ? Math.round(
+        monitors.reduce(
+          (sum, m) => sum + (m.responseTime || 0),
+          0
+        ) / monitors.length
+      )
+    : 0;
   const chartData = monitors.length > 0 ? monitors[0].history : [];
 useEffect(() => {
   const fetchMonitors = async () => {
@@ -94,6 +113,29 @@ console.log("Interval ID:", interval);
     console.error("Error creating monitor:", error);
   }
 };
+const handleDeleteMonitor = async (id) => {
+  try {
+    const response = await fetch(
+      `http://localhost:3000/api/monitors/${id}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to delete monitor");
+    }
+
+    // Remove monitor from React state
+    setMonitors((currentMonitors) =>
+      currentMonitors.filter((monitor) => monitor.id !== id)
+    );
+
+    console.log("Monitor deleted successfully");
+  } catch (error) {
+    console.error("Error deleting monitor:", error);
+  }
+};
 
   return (
     <div className="flex min-h-screen bg-background text-foreground dark">
@@ -105,39 +147,39 @@ console.log("Interval ID:", interval);
         <div className="p-8 space-y-8">
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              title="Total APIs"
-              value="24"
-              icon={<Server size={20} />}
-            />
+           <StatCard
+  title="Total APIs"
+  value={totalApis}
+  icon={<Server size={20} />}
+/>
 
-            <StatCard
-              title="Healthy"
-              value="21"
-              icon={
-                <CheckCircle2
-                  className="text-green-500"
-                  size={20}
-                />
-              }
-            />
+<StatCard
+  title="Healthy"
+  value={healthyApis}
+  icon={
+    <CheckCircle2
+      className="text-green-500"
+      size={20}
+    />
+  }
+/>
 
-            <StatCard
-              title="Down"
-              value="3"
-              icon={
-                <XCircle
-                  className="text-red-500"
-                  size={20}
-                />
-              }
-            />
+<StatCard
+  title="Down"
+  value={downApis}
+  icon={
+    <XCircle
+      className="text-red-500"
+      size={20}
+    />
+  }
+/>
 
-            <StatCard
-              title="Avg Latency"
-              value="84ms"
-              icon={<Clock size={20} />}
-            />
+<StatCard
+  title="Avg Latency"
+  value={`${avgLatency} ms`}
+  icon={<Clock size={20} />}
+/>
           </div>
 
           {/* Chart Section */}
@@ -215,6 +257,7 @@ console.log("Interval ID:", interval);
             <table className="w-full text-left">
               <thead className="bg-accent/50 text-zinc-400 text-xs uppercase font-medium">
                 <tr>
+                 
                   <th className="px-6 py-4">
                     API Name
                   </th>
@@ -234,6 +277,7 @@ console.log("Interval ID:", interval);
                   <th className="px-6 py-4">
                     Last Checked
                   </th>
+                   <th className="px-6 py-4">Action</th>
                 </tr>
               </thead>
 
@@ -278,7 +322,14 @@ console.log("Interval ID:", interval);
   {m.lastChecked
     ? new Date(m.lastChecked).toLocaleString()
     : "-"}
-</td>   
+</td>   <td className="px-6 py-4">
+  <button
+    onClick={() => handleDeleteMonitor(m.id)}
+    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
+  >
+    Delete
+  </button>
+</td>
                   </tr>
                 ))}
               </tbody>

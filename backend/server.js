@@ -97,6 +97,24 @@ const monitor = {
 monitors.push(monitor);
 
 response.status(201).json(monitor);
+});app.delete("/api/monitors/:id", (request, response) => {
+  const id = Number(request.params.id);
+
+  const index = monitors.findIndex(
+    (monitor) => monitor.id === id
+  );
+
+  if (index === -1) {
+    return response.status(404).json({
+      error: "Monitor not found",
+    });
+  }
+
+  monitors.splice(index, 1);
+
+  response.json({
+    message: "Monitor deleted successfully",
+  });
 });
 
 app.get("/api/monitors", (request, response) => {
