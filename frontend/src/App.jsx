@@ -27,7 +27,21 @@ export default function App() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
  const [checkInterval, setCheckInterval] = useState("5");
+ const [editingMonitor, setEditingMonitor] = useState(null);
   const [monitors, setMonitors] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+const filteredMonitors = monitors.filter((monitor) => {
+  const matchesSearch = monitor.name
+    .toLowerCase()
+    .includes(searchTerm.toLowerCase());
+
+  const matchesStatus =
+    statusFilter === "All" ||
+    monitor.status === statusFilter;
+
+  return matchesSearch && matchesStatus;
+});
   const totalApis = monitors.length;
 
 const healthyApis = monitors.filter(
@@ -77,6 +91,41 @@ console.log("Interval ID:", interval);
   // Send new monitor to Express backend
   const handleCreateMonitor = async () => {
   console.log("FORM VALUES:", { name, url,   checkInterval });
+  if (editingMonitor) {
+  const response = await fetch(
+    `http://localhost:3000/api/monitors/${editingMonitor.id}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        url,
+        interval: checkInterval,
+      }),
+    }
+  );
+
+  const updatedMonitor = await response.json();
+
+  setMonitors((current) =>
+    current.map((monitor) =>
+      monitor.id === updatedMonitor.id
+        ? updatedMonitor
+        : monitor
+    )
+  );
+
+  setEditingMonitor(null);
+  setIsModalOpen(false);
+
+  setName("");
+  setUrl("");
+  setCheckInterval("5");
+
+  return;
+}
 
   try {
     const response = await fetch("http://localhost:3000/api/monitors", {
@@ -136,13 +185,25 @@ const handleDeleteMonitor = async (id) => {
     console.error("Error deleting monitor:", error);
   }
 };
+const handleEditClick = (monitor) => {
+  setEditingMonitor(monitor);
+
+  setName(monitor.name);
+  setUrl(monitor.url);
+  setCheckInterval(monitor.interval);
+  setIsModalOpen(true);
+};
 
   return (
     <div className="flex min-h-screen bg-background text-foreground dark">
       <Sidebar />
 
       <main className="flex-1">
-        <Header onAddClick={() => setIsModalOpen(true)} />
+<Header
+  onAddClick={() => setIsModalOpen(true)}
+  searchTerm={searchTerm}
+  setSearchTerm={setSearchTerm}
+/>
 
         <div className="p-8 space-y-8">
           {/* Stats Grid */}
@@ -251,7 +312,40 @@ const handleDeleteMonitor = async (id) => {
               </ResponsiveContainer>
             </div>
           </div>
+<div className="flex gap-3">
+  <button
+    onClick={() => setStatusFilter("All")}
+    className={`px-4 py-2 rounded-md ${
+      statusFilter === "All"
+        ? "bg-white text-black"
+        : "bg-accent text-white"
+    }`}
+  >
+    All
+  </button>
 
+  <button
+    onClick={() => setStatusFilter("Healthy")}
+    className={`px-4 py-2 rounded-md ${
+      statusFilter === "Healthy"
+        ? "bg-green-600 text-white"
+        : "bg-accent text-white"
+    }`}
+  >
+    Healthy
+  </button>
+
+  <button
+    onClick={() => setStatusFilter("Down")}
+    className={`px-4 py-2 rounded-md ${
+      statusFilter === "Down"
+        ? "bg-red-600 text-white"
+        : "bg-accent text-white"
+    }`}
+  >
+    Down
+  </button>
+</div>
           {/* Monitor Table */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <table className="w-full text-left">
@@ -282,7 +376,7 @@ const handleDeleteMonitor = async (id) => {
               </thead>
 
               <tbody className="divide-y divide-border">
-                {monitors.map((m) => (
+                {filteredMonitors.map((m) =>(
                   <tr
                     key={m.id}
                     className="hover:bg-accent/30 transition-colors"
@@ -324,6 +418,13 @@ const handleDeleteMonitor = async (id) => {
     : "-"}
 </td>   <td className="px-6 py-4">
   <button
+    onClick={() => handleEditClick(m)}
+    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+  >
+    Edit
+  </button>
+
+  <button
     onClick={() => handleDeleteMonitor(m.id)}
     className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
   >
@@ -343,8 +444,8 @@ const handleDeleteMonitor = async (id) => {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-border w-full max-w-md rounded-xl p-6 space-y-4">
             <h2 className="text-xl font-bold">
-              Add New Monitor
-            </h2>
+  {editingMonitor ? "Edit Monitor" : "Add New Monitor"}
+</h2>
 
             <div className="space-y-4">
               {/* API NAME */}
@@ -416,11 +517,11 @@ const handleDeleteMonitor = async (id) => {
               </button>
 
               <button
-                onClick={handleCreateMonitor}
-                className="flex-1 px-4 py-2 bg-white text-black rounded-md font-bold"
-              >
-                Create Monitor
-              </button>
+  onClick={handleCreateMonitor}
+  className="flex-1 px-4 py-2 bg-white text-black rounded-md font-bold"
+>
+  {editingMonitor ? "Save Changes" : "Create Monitor"}
+</button>
             </div>
           </div>
         </div>

@@ -32,6 +32,9 @@ async function checkMonitor(url) {
 }
 async function checkAllMonitors() {
   for (const monitor of monitors) {
+    if (monitor.isPaused) {
+  continue;
+}
     const result = await checkMonitor(monitor.url);
 
     monitor.status = result.status;
@@ -83,6 +86,7 @@ const monitor = {
   name,
   url,
   interval,
+  isPaused: false,
   status: result.status,
   responseTime: result.responseTime,
   statusCode: result.statusCode,
@@ -115,6 +119,58 @@ response.status(201).json(monitor);
   response.json({
     message: "Monitor deleted successfully",
   });
+});
+app.put("/api/monitors/:id", async (request, response) => {
+  const id = Number(request.params.id);
+
+  const monitor = monitors.find(
+    (monitor) => monitor.id === id
+  );
+
+  if (!monitor) {
+    return response.status(404).json({
+      error: "Monitor not found",
+    });
+  }
+
+  const { name, url, interval } = request.body;
+
+  if (!name || !url) {
+    return response.status(400).json({
+      error: "Name and URL are required",
+    });
+  }
+
+  try {
+    new URL(url);
+  } catch {
+    return response.status(400).json({
+      error: "Invalid URL",
+    });
+  }
+
+  monitor.name = name;
+  monitor.url = url;
+  monitor.interval = interval;
+
+  response.json(monitor);
+});
+app.patch("/api/monitors/:id/pause", (request, response) => {
+  const id = Number(request.params.id);
+
+  const monitor = monitors.find(
+    (monitor) => monitor.id === id
+  );
+
+  if (!monitor) {
+    return response.status(404).json({
+      error: "Monitor not found",
+    });
+  }
+
+  monitor.isPaused = !monitor.isPaused;
+
+  response.json(monitor);
 });
 
 app.get("/api/monitors", (request, response) => {
