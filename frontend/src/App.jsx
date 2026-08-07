@@ -193,6 +193,30 @@ const handleEditClick = (monitor) => {
   setCheckInterval(monitor.interval);
   setIsModalOpen(true);
 };
+const handlePauseMonitor = async (id) => {
+  try {
+    const response = await fetch(
+      `http://localhost:3000/api/monitors/${id}/pause`,
+      {
+        method: "PATCH",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to pause monitor");
+    }
+
+    const updatedMonitor = await response.json();
+
+    setMonitors((currentMonitors) =>
+      currentMonitors.map((monitor) =>
+        monitor.id === id ? updatedMonitor : monitor
+      )
+    );
+  } catch (error) {
+    console.error("Error pausing monitor:", error);
+  }
+};
 
   return (
     <div className="flex min-h-screen bg-background text-foreground dark">
@@ -416,20 +440,33 @@ const handleEditClick = (monitor) => {
   {m.lastChecked
     ? new Date(m.lastChecked).toLocaleString()
     : "-"}
-</td>   <td className="px-6 py-4">
-  <button
-    onClick={() => handleEditClick(m)}
-    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
-  >
-    Edit
-  </button>
+</td>  <td className="px-6 py-4">
+  <div className="flex gap-2">
+    <button
+      onClick={() => handleEditClick(m)}
+      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+    >
+      Edit
+    </button>
 
-  <button
-    onClick={() => handleDeleteMonitor(m.id)}
-    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
-  >
-    Delete
-  </button>
+    <button
+      onClick={() => handleDeleteMonitor(m.id)}
+      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
+    >
+      Delete
+    </button>
+
+    <button
+      onClick={() => handlePauseMonitor(m.id)}
+      className={`px-3 py-1 rounded text-white ${
+        m.isPaused
+          ? "bg-green-600 hover:bg-green-700"
+          : "bg-yellow-600 hover:bg-yellow-700"
+      }`}
+    >
+      {m.isPaused ? "Resume" : "Pause"}
+    </button>
+  </div>
 </td>
                   </tr>
                 ))}
