@@ -7,6 +7,8 @@ app.use(cors());
 app.use(express.json());
 
 let monitors = [];
+let incidents = [];
+let incidentId = 1;
 async function checkMonitor(url) {
   const start = Date.now();
 
@@ -33,9 +35,48 @@ async function checkMonitor(url) {
 async function checkAllMonitors() {
   for (const monitor of monitors) {
     if (monitor.isPaused) {
-  continue;
-}
+      continue;
+    }
+
     const result = await checkMonitor(monitor.url);
+
+    const previousStatus = monitor.status;
+    const currentStatus = result.status;
+console.log(
+  "STATUS CHECK:",
+  monitor.name,
+  "Previous:",
+  previousStatus,
+  "Current:",
+  currentStatus
+);
+    if (previousStatus === "Healthy" && currentStatus === "Down") {
+      console.log(`Incident started: ${monitor.name}`);
+
+      incidents.push({
+        id: incidentId++,
+        monitorId: monitor.id,
+        monitorName: monitor.name,
+        startedAt: new Date().toISOString(),
+        resolvedAt: null,
+        status: "Open",
+      });
+    }
+
+    if (previousStatus === "Down" && currentStatus === "Healthy") {
+      console.log(`Incident resolved: ${monitor.name}`);
+
+      const incident = incidents.find(
+        (incident) =>
+          incident.monitorId === monitor.id &&
+          incident.status === "Open"
+      );
+
+      if (incident) {
+        incident.resolvedAt = new Date().toISOString();
+        incident.status = "Resolved";
+      }
+    }
 
     monitor.status = result.status;
     monitor.responseTime = result.responseTime;
@@ -176,7 +217,9 @@ app.patch("/api/monitors/:id/pause", (request, response) => {
 app.get("/api/monitors", (request, response) => {
   response.json(monitors);
 });
-
+app.get("/api/incidents", (request, response) => {
+  response.json(incidents);
+});
 app.get("/api/health", (request, response) => {
   response.json({
     status: "ok"

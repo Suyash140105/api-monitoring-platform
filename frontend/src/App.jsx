@@ -31,6 +31,7 @@ export default function App() {
   const [monitors, setMonitors] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [incidents, setIncidents] = useState([]);
 const filteredMonitors = monitors.filter((monitor) => {
   const matchesSearch = monitor.name
     .toLowerCase()
@@ -73,14 +74,30 @@ useEffect(() => {
       console.error("Error fetching monitors:", error);
     }
   };
+  const fetchIncidents = async () => {
+  try {
+    const response = await fetch(
+      "http://localhost:3000/api/incidents"
+    );
+
+    const data = await response.json();
+
+    setIncidents(data);
+    console.log("Incidents:", data);
+  } catch (error) {
+    console.error("Error fetching incidents:", error);
+  }
+};
 
   // Initial fetch
   fetchMonitors();
+  fetchIncidents();
 
   // Refresh every 30 seconds
  const interval = setInterval(() => {
   console.log("Interval running...");
   fetchMonitors();
+  fetchIncidents();
 }, 30000);
 
 console.log("Interval ID:", interval);
