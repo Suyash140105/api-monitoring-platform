@@ -1,6 +1,10 @@
 import React, { useState,useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
+import MonitorTable from "./components/MonitorTable";
+import MonitorModal from "./components/MonitorModal";
+import IncidentTable from "./components/IncidentTable";
+import StatCard from "./components/StatCard";
 import {
   AreaChart,
   Area,
@@ -387,217 +391,31 @@ const handlePauseMonitor = async (id) => {
     Down
   </button>
 </div>
-          {/* Monitor Table */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <table className="w-full text-left">
-              <thead className="bg-accent/50 text-zinc-400 text-xs uppercase font-medium">
-                <tr>
-                 
-                  <th className="px-6 py-4">
-                    API Name
-                  </th>
+         <MonitorTable
+  monitors={filteredMonitors}
+  onEdit={handleEditClick}
+  onDelete={handleDeleteMonitor}
+  onPause={handlePauseMonitor}
+  
+/>
 
-                  <th className="px-6 py-4">
-                    Status
-                  </th>
-
-                  <th className="px-6 py-4">
-                    Response Time
-                  </th>
-
-                  <th className="px-6 py-4">
-                    Uptime %
-                  </th>
-
-                  <th className="px-6 py-4">
-                    Last Checked
-                  </th>
-                   <th className="px-6 py-4">Action</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-border">
-                {filteredMonitors.map((m) =>(
-                  <tr
-                    key={m.id}
-                    className="hover:bg-accent/30 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="font-medium">
-                        {m.name}
-                      </div>
-
-                      <div className="text-xs text-zinc-500">
-                        {m.url}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                          m.status === "Healthy"
-                            ? "bg-green-500/10 text-green-500"
-                            : "bg-red-500/10 text-red-500"
-                        }`}
-                      >
-                        {m.status}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4 text-sm text-zinc-300">
-  {m.responseTime !== null && m.responseTime !== undefined
-    ? `${m.responseTime} ms`
-    : "-"}
-</td>
-<td className="px-6 py-4 text-sm text-zinc-300">
-  {m.uptime}%
-</td>
-
-<td className="px-6 py-4 text-sm text-zinc-500">
-  {m.lastChecked
-    ? new Date(m.lastChecked).toLocaleString()
-    : "-"}
-</td>  <td className="px-6 py-4">
-  <div className="flex gap-2">
-    <button
-      onClick={() => handleEditClick(m)}
-      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
-    >
-      Edit
-    </button>
-
-    <button
-      onClick={() => handleDeleteMonitor(m.id)}
-      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
-    >
-      Delete
-    </button>
-
-    <button
-      onClick={() => handlePauseMonitor(m.id)}
-      className={`px-3 py-1 rounded text-white ${
-        m.isPaused
-          ? "bg-green-600 hover:bg-green-700"
-          : "bg-yellow-600 hover:bg-yellow-700"
-      }`}
-    >
-      {m.isPaused ? "Resume" : "Pause"}
-    </button>
-  </div>
-</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+<IncidentTable incidents={incidents} />
         </div>
       </main>
 
-      {/* Add Monitor Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border w-full max-w-md rounded-xl p-6 space-y-4">
-            <h2 className="text-xl font-bold">
-  {editingMonitor ? "Edit Monitor" : "Add New Monitor"}
-</h2>
-
-            <div className="space-y-4">
-              {/* API NAME */}
-              <div>
-                <label className="text-sm text-zinc-400 mb-1 block">
-                  API Name
-                </label>
-
-                <input
-                  className="w-full bg-accent/50 border border-border rounded-md p-2"
-                  placeholder="e.g. Payment API"
-                  value={name}
-                  onChange={(e) =>
-                    setName(e.target.value)
-                  }
-                />
-              </div>
-
-              {/* URL */}
-              <div>
-                <label className="text-sm text-zinc-400 mb-1 block">
-                  URL
-                </label>
-
-                <input
-                  className="w-full bg-accent/50 border border-border rounded-md p-2"
-                  placeholder="https://api.domain.com/v1"
-                  value={url}
-                  onChange={(e) =>
-                    setUrl(e.target.value)
-                  }
-                />
-              </div>
-
-              {/* INTERVAL */}
-              <div>
-                <label className="text-sm text-zinc-400 mb-1 block">
-                  Check Interval
-                </label>
-
-                <select
-                  className="w-full bg-accent/50 border border-border rounded-md p-2"
-                 value={checkInterval}
-                 onChange={(e) => setCheckInterval(e.target.value)}
-                >
-                  <option value="1">
-                    Every 1 minute
-                  </option>
-
-                  <option value="5">
-                    Every 5 minutes
-                  </option>
-
-                  <option value="15">
-                    Every 15 minutes
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() =>
-                  setIsModalOpen(false)
-                }
-                className="flex-1 px-4 py-2 bg-accent hover:bg-zinc-800 rounded-md"
-              >
-                Cancel
-              </button>
-
-              <button
-  onClick={handleCreateMonitor}
-  className="flex-1 px-4 py-2 bg-white text-black rounded-md font-bold"
->
-  {editingMonitor ? "Save Changes" : "Create Monitor"}
-</button>
-            </div>
-          </div>
-        </div>
-      )}
+    <MonitorModal
+  isOpen={isModalOpen}
+  editingMonitor={editingMonitor}
+  name={name}
+  setName={setName}
+  url={url}
+  setUrl={setUrl}
+  checkInterval={checkInterval}
+  setCheckInterval={setCheckInterval}
+  onClose={() => setIsModalOpen(false)}
+  onSubmit={handleCreateMonitor}
+/>
     </div>
   );
 }
 
-function StatCard({ title, value, icon }) {
-  return (
-    <div className="bg-card border border-border p-6 rounded-xl space-y-2">
-      <div className="flex justify-between items-center text-zinc-400">
-        <span className="text-xs font-medium uppercase tracking-wider">
-          {title}
-        </span>
-
-        {icon}
-      </div>
-
-      <div className="text-2xl font-bold tracking-tight">
-        {value}
-      </div>
-    </div>
-  );
-}
