@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
+import { useOutletContext } from "react-router-dom";
 import MonitorTable from "../components/MonitorTable";
 import MonitorModal from "../components/MonitorModal";
 import IncidentTable from "../components/IncidentTable";
 import StatCard from "../components/StatCard";
+import { API_URL } from "../config";
 import {
   AreaChart,
   Area,
@@ -33,9 +33,9 @@ export default function Dashboard() {
  const [checkInterval, setCheckInterval] = useState("5");
  const [editingMonitor, setEditingMonitor] = useState(null);
   const [monitors, setMonitors] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [incidents, setIncidents] = useState([]);
+  const { searchTerm, registerAddClick } = useOutletContext();
 const filteredMonitors = monitors.filter((monitor) => {
   const matchesSearch = monitor.name
     .toLowerCase()
@@ -68,10 +68,14 @@ const avgLatency =
     : 0;
   const chartData = monitors.length > 0 ? monitors[0].history : [];
 useEffect(() => {
+  registerAddClick(() => setIsModalOpen(true));
+  return () => registerAddClick(null);
+}, [registerAddClick]);
+useEffect(() => {
   const fetchMonitors = async () => {
     console.log("Fetching monitors...");
     try {
-      const response = await fetch("http://localhost:3000/api/monitors");
+      const response = await fetch(`${API_URL}/api/monitors`);
       const data = await response.json();
       setMonitors(data);
     } catch (error) {
@@ -81,7 +85,7 @@ useEffect(() => {
   const fetchIncidents = async () => {
   try {
     const response = await fetch(
-      "http://localhost:3000/api/incidents"
+      `${API_URL}/api/incidents`
     );
 
     const data = await response.json();
@@ -114,7 +118,7 @@ console.log("Interval ID:", interval);
   console.log("FORM VALUES:", { name, url,   checkInterval });
   if (editingMonitor) {
   const response = await fetch(
-    `http://localhost:3000/api/monitors/${editingMonitor.id}`,
+    `${API_URL}/api/monitors/${editingMonitor.id}`,
     {
       method: "PUT",
       headers: {
@@ -149,7 +153,7 @@ console.log("Interval ID:", interval);
 }
 
   try {
-    const response = await fetch("http://localhost:3000/api/monitors", {
+    const response = await fetch(`${API_URL}/api/monitors`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -186,7 +190,7 @@ console.log("Interval ID:", interval);
 const handleDeleteMonitor = async (id) => {
   try {
     const response = await fetch(
-      `http://localhost:3000/api/monitors/${id}`,
+      `${API_URL}/api/monitors/${id}`,
       {
         method: "DELETE",
       }
@@ -217,7 +221,7 @@ const handleEditClick = (monitor) => {
 const handlePauseMonitor = async (id) => {
   try {
     const response = await fetch(
-      `http://localhost:3000/api/monitors/${id}/pause`,
+      `${API_URL}/api/monitors/${id}/pause`,
       {
         method: "PATCH",
       }
@@ -240,16 +244,7 @@ const handlePauseMonitor = async (id) => {
 };
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground dark">
-      <Sidebar />
-
-      <main className="flex-1">
-<Header
-  onAddClick={() => setIsModalOpen(true)}
-  searchTerm={searchTerm}
-  setSearchTerm={setSearchTerm}
-/>
-
+    <>
         <div className="p-8 space-y-8">
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -401,7 +396,6 @@ const handlePauseMonitor = async (id) => {
 
 <IncidentTable incidents={incidents} />
         </div>
-      </main>
 
     <MonitorModal
   isOpen={isModalOpen}
@@ -415,7 +409,7 @@ const handlePauseMonitor = async (id) => {
   onClose={() => setIsModalOpen(false)}
   onSubmit={handleCreateMonitor}
 />
-    </div>
+    </>
   );
 }
 

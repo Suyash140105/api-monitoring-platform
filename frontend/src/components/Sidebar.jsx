@@ -1,11 +1,12 @@
+import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Activity, AlertTriangle, BarChart3, Settings, Zap } from 'lucide-react';
 
 const navItems = [
-  { name: 'Dashboard', icon: LayoutDashboard, active: true },
-  { name: 'Monitors', icon: Activity },
-  { name: 'Incidents', icon: AlertTriangle },
-  { name: 'Analytics', icon: BarChart3 },
-  { name: 'Settings', icon: Settings },
+  { name: 'Dashboard', icon: LayoutDashboard, to: '/' },
+  { name: 'Monitors', icon: Activity, to: '/monitors' },
+  { name: 'Incidents', icon: AlertTriangle, to: '/incidents' },
+  { name: 'Analytics', icon: BarChart3, to: '/analytics' },
+  { name: 'Settings', icon: Settings, to: '/settings' },
 ];
 
 export default function Sidebar() {
@@ -17,15 +18,19 @@ export default function Sidebar() {
       </div>
       <nav className="flex-1 px-4 space-y-2">
         {navItems.map((item) => (
-          <button
+          <NavLink
             key={item.name}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-              item.active ? 'bg-accent text-white' : 'text-zinc-400 hover:text-white hover:bg-accent/50'
-            }`}
+            to={item.to}
+            end={item.to === '/'}
+            className={({ isActive }) =>
+              `w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                isActive ? 'bg-accent text-white' : 'text-zinc-400 hover:text-white hover:bg-accent/50'
+              }`
+            }
           >
             <item.icon size={20} />
             <span className="font-medium">{item.name}</span>
-          </button>
+          </NavLink>
         ))}
       </nav>
     </div>
