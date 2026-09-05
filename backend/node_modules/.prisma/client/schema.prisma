@@ -1,0 +1,58 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum MonitorStatus {
+  Healthy
+  Down
+}
+
+enum IncidentStatus {
+  Open
+  Resolved
+}
+
+model Monitor {
+  id            Int           @id @default(autoincrement())
+  name          String
+  url           String
+  interval      Int           @default(5)
+  isPaused      Boolean       @default(false)
+  status        MonitorStatus @default(Healthy)
+  responseTime  Int?
+  statusCode    Int?
+  lastChecked   DateTime?
+  totalChecks   Int           @default(0)
+  successChecks Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  incidents Incident[]
+  checkLogs CheckLog[]
+}
+
+model Incident {
+  id         Int            @id @default(autoincrement())
+  monitorId  Int
+  monitor    Monitor        @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status     IncidentStatus @default(Open)
+  startedAt  DateTime       @default(now())
+  resolvedAt DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+}
+
+model CheckLog {
+  id         Int           @id @default(autoincrement())
+  monitorId  Int
+  monitor    Monitor       @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  latency    Int?
+  statusCode Int?
+  status     MonitorStatus
+  createdAt  DateTime      @default(now())
+}
