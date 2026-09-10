@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Activity, AlertTriangle, BarChart3, Settings, Zap } from 'lucide-react';
+import { LayoutDashboard, Activity, AlertTriangle, BarChart3, Settings, Zap, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const navItems = [
   { name: 'Dashboard', icon: LayoutDashboard, to: '/' },
@@ -10,6 +11,8 @@ const navItems = [
 ];
 
 export default function Sidebar() {
+  const { user, logout } = useAuth();
+
   return (
     <div className="w-64 border-r border-border bg-card h-screen sticky top-0 flex flex-col">
       <div className="p-6 flex items-center gap-2 font-bold text-xl text-white">
@@ -33,6 +36,22 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {user && (
+        <div className="p-4 border-t border-border flex items-center justify-between">
+          <div className="truncate pr-2">
+            <p className="text-xs font-medium text-white truncate">{user.name}</p>
+            <p className="text-[11px] text-zinc-500 truncate">{user.email}</p>
+          </div>
+          <button
+            onClick={logout}
+            className="p-1.5 text-zinc-400 hover:text-white hover:bg-accent rounded-md transition-colors shrink-0"
+            title="Log out"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

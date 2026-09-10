@@ -1,10 +1,13 @@
-import { Bell, Search, User, Plus } from "lucide-react";
+import { Bell, Search, User, Plus, LogOut } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function Header({
   onAddClick,
   searchTerm,
   setSearchTerm,
 }) {
+  const { user, logout } = useAuth();
+
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-md sticky top-0 z-10 px-8 flex items-center justify-between">
       <div className="relative w-96">
@@ -30,14 +33,28 @@ export default function Header({
           Add Monitor
         </button>
 
-        <button className="p-2 text-zinc-400 hover:text-white">
+        <button className="p-2 text-zinc-400 hover:text-white" title="Notifications">
           <Bell size={20} />
         </button>
 
-        <div className="h-8 w-8 rounded-full bg-zinc-800 border border-border flex items-center justify-center text-zinc-400 cursor-pointer">
-          <User size={18} />
-        </div>
+        {user && (
+          <div className="flex items-center gap-2 text-sm text-zinc-300">
+            <div className="h-8 w-8 rounded-full bg-zinc-800 border border-border flex items-center justify-center text-zinc-400">
+              <User size={18} />
+            </div>
+            <span className="hidden md:inline font-medium text-xs">{user.name || user.email}</span>
+          </div>
+        )}
+
+        <button
+          onClick={logout}
+          className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-accent/40 hover:bg-accent border border-border px-3 py-1.5 rounded-md transition-colors"
+          title="Sign Out"
+        >
+          <LogOut size={14} />
+          <span className="hidden sm:inline">Logout</span>
+        </button>
       </div>
     </header>
   );
-}
+}

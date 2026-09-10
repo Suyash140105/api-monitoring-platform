@@ -5,6 +5,7 @@ import MonitorModal from "../components/MonitorModal";
 import IncidentTable from "../components/IncidentTable";
 import StatCard from "../components/StatCard";
 import { API_URL } from "../config";
+import { useAuth } from "../context/AuthContext";
 import {
   AreaChart,
   Area,
@@ -25,6 +26,7 @@ import {
 
 
 export default function Dashboard() {
+  const { authFetch } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Add Monitor form state
@@ -71,177 +73,176 @@ useEffect(() => {
   registerAddClick(() => setIsModalOpen(true));
   return () => registerAddClick(null);
 }, [registerAddClick]);
-useEffect(() => {
-  const fetchMonitors = async () => {
-    console.log("Fetching monitors...");
-    try {
-      const response = await fetch(`${API_URL}/api/monitors`);
-      const data = await response.json();
-      setMonitors(data);
-    } catch (error) {
-      console.error("Error fetching monitors:", error);
-    }
-  };
-  const fetchIncidents = async () => {
-  try {
-    const response = await fetch(
-      `${API_URL}/api/incidents`
-    );
+  useEffect(() => {
+    const fetchMonitors = async () => {
+      console.log("Fetching monitors...");
+      try {
+        const response = await authFetch(`${API_URL}/api/monitors`);
+        if (response.ok) {
+          const data = await response.json();
+          setMonitors(data);
+        }
+      } catch (error) {
+        console.error("Error fetching monitors:", error);
+      }
+    };
+    const fetchIncidents = async () => {
+      try {
+        const response = await authFetch(`${API_URL}/api/incidents`);
+        if (response.ok) {
+          const data = await response.json();
+          setIncidents(data);
+          console.log("Incidents:", data);
+        }
+      } catch (error) {
+        console.error("Error fetching incidents:", error);
+      }
+    };
 
-    const data = await response.json();
+    // Initial fetch
+    fetchMonitors();
+    fetchIncidents();
 
-    setIncidents(data);
-    console.log("Incidents:", data);
-  } catch (error) {
-    console.error("Error fetching incidents:", error);
-  }
-};
+    // Refresh every 30 seconds
+    const interval = setInterval(() => {
+      console.log("Interval running...");
+      fetchMonitors();
+      fetchIncidents();
+    }, 30000);
 
-  // Initial fetch
-  fetchMonitors();
-  fetchIncidents();
+    console.log("Interval ID:", interval);
 
-  // Refresh every 30 seconds
- const interval = setInterval(() => {
-  console.log("Interval running...");
-  fetchMonitors();
-  fetchIncidents();
-}, 30000);
+    // Cleanup when component unmounts
+    return () => clearInterval(interval);
+  }, [authFetch]);
 
-console.log("Interval ID:", interval);
-
-  // Cleanup when component unmounts
-  return () => clearInterval(interval);
-}, []);
   // Send new monitor to Express backend
   const handleCreateMonitor = async () => {
-  console.log("FORM VALUES:", { name, url,   checkInterval });
-  if (editingMonitor) {
-  const response = await fetch(
-    `${API_URL}/api/monitors/${editingMonitor.id}`,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        url,
-        interval: checkInterval,
-      }),
+    console.log("FORM VALUES:", { name, url, checkInterval });
+    if (editingMonitor) {
+      const response = await authFetch(
+        `${API_URL}/api/monitors/${editingMonitor.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            url,
+            interval: checkInterval,
+          }),
+        }
+      );
+
+      if (!response.ok) return;
+
+      const updatedMonitor = await response.json();
+
+      setMonitors((current) =>
+        current.map((monitor) =>
+          monitor.id === updatedMonitor.id ? updatedMonitor : monitor
+        )
+      );
+
+      setEditingMonitor(null);
+      setIsModalOpen(false);
+
+      setName("");
+      setUrl("");
+      setCheckInterval("5");
+
+      return;
     }
-  );
 
-  const updatedMonitor = await response.json();
+    try {
+      const response = await authFetch(`${API_URL}/api/monitors`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          url,
+          interval: checkInterval,
+        }),
+      });
 
-  setMonitors((current) =>
-    current.map((monitor) =>
-      monitor.id === updatedMonitor.id
-        ? updatedMonitor
-        : monitor
-    )
-  );
+      if (!response.ok) return;
 
-  setEditingMonitor(null);
-  setIsModalOpen(false);
+      const data = await response.json();
 
-  setName("");
-  setUrl("");
-  setCheckInterval("5");
+      console.log("Monitor created:", data);
 
-  return;
-}
+      // Add returned monitor to the dashboard
+      setMonitors((currentMonitors) => [...currentMonitors, data]);
 
-  try {
-    const response = await fetch(`${API_URL}/api/monitors`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-     body: JSON.stringify({
-  name,
-  url,
-  interval: checkInterval,
-}),
-    });
+      // Close modal
+      setIsModalOpen(false);
 
-    const data = await response.json();
+      // Clear form
+      setName("");
+      setUrl("");
+      setCheckInterval("5");
+    } catch (error) {
+      console.error("Error creating monitor:", error);
+    }
+  };
 
-    console.log("Monitor created:", data);
-
-    // Add returned monitor to the dashboard
-    setMonitors((currentMonitors) => [
-      ...currentMonitors,
-      data,
-    ]);
-
-    // Close modal
-    setIsModalOpen(false);
-
-    // Clear form
-    setName("");
-    setUrl("");
-    setCheckInterval("5");
-
-  } catch (error) {
-    console.error("Error creating monitor:", error);
-  }
-};
-const handleDeleteMonitor = async (id) => {
-  try {
-    const response = await fetch(
-      `${API_URL}/api/monitors/${id}`,
-      {
+  const handleDeleteMonitor = async (id) => {
+    try {
+      const response = await authFetch(`${API_URL}/api/monitors/${id}`, {
         method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete monitor");
       }
-    );
 
-    if (!response.ok) {
-      throw new Error("Failed to delete monitor");
+      // Remove monitor from React state
+      setMonitors((currentMonitors) =>
+        currentMonitors.filter((monitor) => monitor.id !== id)
+      );
+
+      console.log("Monitor deleted successfully");
+    } catch (error) {
+      console.error("Error deleting monitor:", error);
     }
+  };
 
-    // Remove monitor from React state
-    setMonitors((currentMonitors) =>
-      currentMonitors.filter((monitor) => monitor.id !== id)
-    );
+  const handleEditClick = (monitor) => {
+    setEditingMonitor(monitor);
 
-    console.log("Monitor deleted successfully");
-  } catch (error) {
-    console.error("Error deleting monitor:", error);
-  }
-};
-const handleEditClick = (monitor) => {
-  setEditingMonitor(monitor);
+    setName(monitor.name);
+    setUrl(monitor.url);
+    setCheckInterval(monitor.interval);
+    setIsModalOpen(true);
+  };
 
-  setName(monitor.name);
-  setUrl(monitor.url);
-  setCheckInterval(monitor.interval);
-  setIsModalOpen(true);
-};
-const handlePauseMonitor = async (id) => {
-  try {
-    const response = await fetch(
-      `${API_URL}/api/monitors/${id}/pause`,
-      {
-        method: "PATCH",
+  const handlePauseMonitor = async (id) => {
+    try {
+      const response = await authFetch(
+        `${API_URL}/api/monitors/${id}/pause`,
+        {
+          method: "PATCH",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to pause monitor");
       }
-    );
 
-    if (!response.ok) {
-      throw new Error("Failed to pause monitor");
+      const updatedMonitor = await response.json();
+
+      setMonitors((currentMonitors) =>
+        currentMonitors.map((monitor) =>
+          monitor.id === id ? updatedMonitor : monitor
+        )
+      );
+    } catch (error) {
+      console.error("Error pausing monitor:", error);
     }
-
-    const updatedMonitor = await response.json();
-
-    setMonitors((currentMonitors) =>
-      currentMonitors.map((monitor) =>
-        monitor.id === id ? updatedMonitor : monitor
-      )
-    );
-  } catch (error) {
-    console.error("Error pausing monitor:", error);
-  }
-};
+  };
 
   return (
     <>

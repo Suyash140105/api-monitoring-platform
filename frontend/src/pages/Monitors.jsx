@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import MonitorTable from "../components/MonitorTable";
 import MonitorModal from "../components/MonitorModal";
 import { API_URL } from "../config";
+import { useAuth } from "../context/AuthContext";
 
 export default function Monitors() {
+  const { authFetch } = useAuth();
   const [monitors, setMonitors] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -15,13 +17,15 @@ export default function Monitors() {
 
   useEffect(() => {
     fetchMonitors();
-  }, []);
+  }, [authFetch]);
 
   const fetchMonitors = async () => {
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_URL}/api/monitors`
       );
+
+      if (!response.ok) return;
 
       const data = await response.json();
 
@@ -39,7 +43,7 @@ export default function Monitors() {
 
       const method = editingMonitor ? "PUT" : "POST";
 
-      const response = await fetch(urlEndpoint, {
+      const response = await authFetch(urlEndpoint, {
         method,
         headers: {
           "Content-Type": "application/json",
@@ -85,7 +89,7 @@ export default function Monitors() {
 
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_URL}/api/monitors/${id}`,
         {
           method: "DELETE",
@@ -106,7 +110,7 @@ export default function Monitors() {
 
   const handlePause = async (id) => {
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_URL}/api/monitors/${id}/pause`,
         {
           method: "PATCH",

@@ -17,6 +17,17 @@ enum IncidentStatus {
   Resolved
 }
 
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  monitors     Monitor[]
+}
+
 model Monitor {
   id            Int           @id @default(autoincrement())
   name          String
@@ -32,8 +43,11 @@ model Monitor {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  incidents Incident[]
-  checkLogs CheckLog[]
+  userId        Int
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  incidents     Incident[]
+  checkLogs     CheckLog[]
 }
 
 model Incident {
