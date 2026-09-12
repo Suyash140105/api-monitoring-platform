@@ -17,48 +17,57 @@ enum IncidentStatus {
   Resolved
 }
 
-model User {
-  id           Int       @id @default(autoincrement())
-  name         String
-  email        String    @unique
-  passwordHash String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+enum NotificationType {
+  INCIDENT_OPENED
+  INCIDENT_RESOLVED
+}
 
-  monitors     Monitor[]
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  monitors      Monitor[]
+  notifications Notification[]
 }
 
 model Monitor {
-  id            Int           @id @default(autoincrement())
+  id            Int            @id @default(autoincrement())
   name          String
   url           String
-  interval      Int           @default(5)
-  isPaused      Boolean       @default(false)
-  status        MonitorStatus @default(Healthy)
+  interval      Int            @default(5)
+  isPaused      Boolean        @default(false)
+  status        MonitorStatus  @default(Healthy)
   responseTime  Int?
   statusCode    Int?
   lastChecked   DateTime?
-  totalChecks   Int           @default(0)
-  successChecks Int           @default(0)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  totalChecks   Int            @default(0)
+  successChecks Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   userId        Int
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   incidents     Incident[]
   checkLogs     CheckLog[]
+  notifications Notification[]
 }
 
 model Incident {
-  id         Int            @id @default(autoincrement())
-  monitorId  Int
-  monitor    Monitor        @relation(fields: [monitorId], references: [id], onDelete: Cascade)
-  status     IncidentStatus @default(Open)
-  startedAt  DateTime       @default(now())
-  resolvedAt DateTime?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  id            Int            @id @default(autoincrement())
+  monitorId     Int
+  monitor       Monitor        @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status        IncidentStatus @default(Open)
+  startedAt     DateTime       @default(now())
+  resolvedAt    DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  notifications Notification[]
 }
 
 model CheckLog {
@@ -69,4 +78,19 @@ model CheckLog {
   statusCode Int?
   status     MonitorStatus
   createdAt  DateTime      @default(now())
+}
+
+model Notification {
+  id         Int              @id @default(autoincrement())
+  userId     Int
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitorId  Int?
+  monitor    Monitor?         @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  incidentId Int?
+  incident   Incident?        @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  title      String
+  message    String
+  isRead     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
 }

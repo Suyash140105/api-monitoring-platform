@@ -49,6 +49,20 @@ function formatIncident(incident) {
   };
 }
 
+function formatNotification(notification) {
+  return {
+    id: notification.id,
+    userId: notification.userId,
+    monitorId: notification.monitorId,
+    incidentId: notification.incidentId,
+    type: notification.type,
+    title: notification.title,
+    message: notification.message,
+    isRead: notification.isRead,
+    createdAt: notification.createdAt ? notification.createdAt.toISOString() : null,
+  };
+}
+
 async function checkMonitor(url) {
   const start = Date.now();
   const controller = new AbortController();
@@ -111,14 +125,34 @@ async function checkAllMonitors() {
     );
 
     if (previousStatus === "Healthy" && currentStatus === "Down") {
-      console.log(`Incident started: ${monitor.name}`);
-      await prisma.incident.create({
-        data: {
+      const existingOpenIncident = await prisma.incident.findFirst({
+        where: {
           monitorId: monitor.id,
-          startedAt: new Date(),
           status: "Open",
         },
       });
+
+      if (!existingOpenIncident) {
+        console.log(`Incident started: ${monitor.name}`);
+        const newIncident = await prisma.incident.create({
+          data: {
+            monitorId: monitor.id,
+            startedAt: new Date(),
+            status: "Open",
+          },
+        });
+
+        await prisma.notification.create({
+          data: {
+            userId: monitor.userId,
+            monitorId: monitor.id,
+            incidentId: newIncident.id,
+            type: "INCIDENT_OPENED",
+            title: "Monitor Down",
+            message: `${monitor.name} is down.`,
+          },
+        });
+      }
     }
 
     if (previousStatus === "Down" && currentStatus === "Healthy") {
@@ -138,6 +172,17 @@ async function checkAllMonitors() {
           data: {
             resolvedAt: new Date(),
             status: "Resolved",
+          },
+        });
+
+        await prisma.notification.create({
+          data: {
+            userId: monitor.userId,
+            monitorId: monitor.id,
+            incidentId: openIncident.id,
+            type: "INCIDENT_RESOLVED",
+            title: "Monitor Recovered",
+            message: `${monitor.name} has recovered.`,
           },
         });
       }
@@ -769,6 +814,66 @@ app.get("/api/analytics", requireAuth, async (request, response, next) => {
   }
 });
 
+// Notifications API
+app.get("/api/notifications", requireAuth, async (request, response, next) => {
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: { userId: request.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    response.json(notifications.map(formatNotification));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/notifications/read-all", requireAuth, async (request, response, next) => {
+  try {
+    await prisma.notification.updateMany({
+      where: {
+        userId: request.user.id,
+        isRead: false,
+      },
+      data: {
+        isRead: true,
+      },
+    });
+    response.json({ message: "All notifications marked as read" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/notifications/:id/read", requireAuth, async (request, response, next) => {
+  try {
+    const id = Number(request.params.id);
+    if (isNaN(id)) {
+      return response.status(400).json({ error: "Invalid notification ID" });
+    }
+
+    const notification = await prisma.notification.findFirst({
+      where: {
+        id,
+        userId: request.user.id,
+      },
+    });
+
+    if (!notification) {
+      return response.status(404).json({ error: "Notification not found" });
+    }
+
+    const updated = await prisma.notification.update({
+      where: { id: notification.id },
+      data: { isRead: true },
+    });
+
+    response.json(formatNotification(updated));
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/health", (request, response, next) => {
   try {
     response.json({
@@ -810,10 +915,15 @@ app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
 
+let isChecking = false;
 setInterval(async () => {
+  if (isChecking) return;
+  isChecking = true;
   try {
     await checkAllMonitors();
   } catch (error) {
     console.error("Error in background monitoring loop:", error);
+  } finally {
+    isChecking = false;
   }
 }, 10000);
