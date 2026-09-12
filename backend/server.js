@@ -3,6 +3,7 @@ import cors from "cors";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "./prisma.js";
+import { sendOutageAlert, sendRecoveryAlert } from "./emailService.js";
 
 const app = express();
 
@@ -96,6 +97,11 @@ async function checkMonitor(url) {
 async function checkAllMonitors() {
   const monitors = await prisma.monitor.findMany({
     where: { isPaused: false },
+    include: {
+      user: {
+        select: { id: true, email: true, name: true },
+      },
+    },
   });
 
   const now = Date.now();
@@ -152,6 +158,18 @@ async function checkAllMonitors() {
             message: `${monitor.name} is down.`,
           },
         });
+
+        // Trigger outage email asynchronously (safe, non-blocking)
+        if (monitor.user?.email) {
+          sendOutageAlert({
+            to: monitor.user.email,
+            monitorName: monitor.name,
+            monitorUrl: monitor.url,
+            startedAt: newIncident.startedAt,
+          }).catch((err) =>
+            console.error("[EmailService] Error dispatching outage alert:", err)
+          );
+        }
       }
     }
 
@@ -167,7 +185,7 @@ async function checkAllMonitors() {
       });
 
       if (openIncident) {
-        await prisma.incident.update({
+        const resolvedIncident = await prisma.incident.update({
           where: { id: openIncident.id },
           data: {
             resolvedAt: new Date(),
@@ -185,6 +203,19 @@ async function checkAllMonitors() {
             message: `${monitor.name} has recovered.`,
           },
         });
+
+        // Trigger recovery email asynchronously (safe, non-blocking)
+        if (monitor.user?.email) {
+          sendRecoveryAlert({
+            to: monitor.user.email,
+            monitorName: monitor.name,
+            monitorUrl: monitor.url,
+            startedAt: openIncident.startedAt,
+            resolvedAt: resolvedIncident.resolvedAt,
+          }).catch((err) =>
+            console.error("[EmailService] Error dispatching recovery alert:", err)
+          );
+        }
       }
     }
 
