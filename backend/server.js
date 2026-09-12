@@ -641,6 +641,134 @@ app.get("/api/incidents", requireAuth, async (request, response, next) => {
   }
 });
 
+app.get("/api/analytics", requireAuth, async (request, response, next) => {
+  try {
+    const userId = request.user.id;
+
+    // Fetch user's monitors with recent checkLogs
+    const monitors = await prisma.monitor.findMany({
+      where: { userId },
+      orderBy: { id: "asc" },
+      include: {
+        checkLogs: {
+          orderBy: { createdAt: "desc" },
+          take: 30,
+        },
+      },
+    });
+
+    const totalMonitors = monitors.length;
+    let totalChecks = 0;
+    let successChecks = 0;
+
+    for (const m of monitors) {
+      totalChecks += m.totalChecks;
+      successChecks += m.successChecks;
+    }
+
+    const failedChecks = totalChecks - successChecks;
+
+    // Overall uptime percentage across all checks
+    const overallUptime =
+      totalChecks > 0
+        ? Number(((successChecks / totalChecks) * 100).toFixed(2))
+        : (totalMonitors > 0 && monitors.every((m) => m.status === "Healthy") ? 100 : 0);
+
+    // Global average response time from database CheckLog
+    const avgResponseAgg = await prisma.checkLog.aggregate({
+      where: {
+        monitor: { userId },
+        latency: { not: null },
+      },
+      _avg: {
+        latency: true,
+      },
+    });
+
+    const avgResponseTime = avgResponseAgg._avg.latency
+      ? Math.round(avgResponseAgg._avg.latency)
+      : 0;
+
+    // Monitor performance list
+    const monitorPerformance = monitors.map((m) => {
+      const validLogs = m.checkLogs.filter(
+        (l) => l.latency !== null && l.latency !== undefined
+      );
+      const monitorAvgLatency =
+        validLogs.length > 0
+          ? Math.round(
+              validLogs.reduce((acc, curr) => acc + curr.latency, 0) /
+                validLogs.length
+            )
+          : (m.responseTime ?? 0);
+
+      const monitorUptime =
+        m.totalChecks > 0
+          ? ((m.successChecks / m.totalChecks) * 100).toFixed(2)
+          : (m.status === "Healthy" ? "100.00" : "0.00");
+
+      return {
+        id: m.id,
+        name: m.name,
+        url: m.url,
+        status: m.status,
+        isPaused: m.isPaused,
+        uptime: monitorUptime,
+        avgResponseTime: monitorAvgLatency,
+        totalChecks: m.totalChecks,
+        successChecks: m.successChecks,
+        failedChecks: m.totalChecks - m.successChecks,
+        lastChecked: m.lastChecked ? m.lastChecked.toISOString() : null,
+      };
+    });
+
+    // Recent latency time series across user's monitors (limit 40)
+    const recentLogs = await prisma.checkLog.findMany({
+      where: {
+        monitor: { userId },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+      include: {
+        monitor: {
+          select: { name: true },
+        },
+      },
+    });
+
+    // Chronological order for chart display
+    const latencySeries = recentLogs.reverse().map((log) => ({
+      id: log.id,
+      monitorId: log.monitorId,
+      monitorName: log.monitor?.name || "Unknown",
+      time: new Date(log.createdAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      timestamp: log.createdAt.toISOString(),
+      latency: log.latency,
+      statusCode: log.statusCode,
+      status: log.status,
+    }));
+
+    response.json({
+      overview: {
+        totalMonitors,
+        overallUptime,
+        totalChecks,
+        successChecks,
+        failedChecks,
+        avgResponseTime,
+      },
+      latencySeries,
+      monitorPerformance,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/health", (request, response, next) => {
   try {
     response.json({
